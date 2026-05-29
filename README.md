@@ -155,7 +155,76 @@ Customer page shows **LIVE** green dot when moving. They **cannot** see admin co
 
 ---
 
-## Deploy (optional)
+## Push to GitHub
+
+From the project folder:
+
+```powershell
+cd "Tracking site"
+gh auth login
+gh repo create pxpress-tracking-site --public --source=. --remote=origin --push
+```
+
+If you prefer the website: create a new repo at [github.com/new](https://github.com/new), then:
+
+```powershell
+git remote add origin https://github.com/YOUR_USERNAME/pxpress-tracking-site.git
+git push -u origin main
+```
+
+> `.env` files are gitignored. Only `.env.example` files are committed.
+
+---
+
+## Deploy & launch live
+
+### 1. MongoDB Atlas (database)
+
+1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Database Access → create user + password
+3. Network Access → allow `0.0.0.0/0` (or Railway/Vercel IPs)
+4. Connect → copy connection string → replace `<password>`
+
+### 2. Backend (Railway or Render)
+
+1. Import your GitHub repo
+2. Set **Root Directory** to `backend`
+3. **Start command:** `npm start`
+4. Add environment variables:
+
+| Variable | Value |
+|----------|--------|
+| `MONGODB_URI` | Your Atlas connection string |
+| `JWT_SECRET` | Long random secret string |
+| `FRONTEND_URL` | Your Vercel URL (e.g. `https://pxpress.vercel.app`) |
+| `PORT` | `5000` (Railway sets this automatically) |
+
+5. After deploy, run **one-time seed** in Railway shell: `npm run seed`
+6. Copy your backend URL (e.g. `https://pxpress-api.up.railway.app`)
+
+### 3. Frontend (Vercel)
+
+1. Import the same GitHub repo at [vercel.com](https://vercel.com)
+2. Set **Root Directory** to `frontend`
+3. Add environment variables:
+
+| Variable | Value |
+|----------|--------|
+| `NEXT_PUBLIC_API_URL` | `https://YOUR-BACKEND-URL/api` |
+| `NEXT_PUBLIC_SOCKET_URL` | `https://YOUR-BACKEND-URL` |
+
+4. Deploy → your site is live at `https://your-project.vercel.app`
+
+### 4. Post-deploy checklist
+
+- [ ] Backend health: `https://YOUR-BACKEND-URL/api/health` returns `{ "status": "ok" }`
+- [ ] Login works with admin credentials after seed
+- [ ] Track page loads map and live updates
+- [ ] `FRONTEND_URL` on backend matches exact Vercel URL (no trailing slash)
+
+---
+
+## Deploy (quick reference)
 
 | Part | Platform |
 |------|----------|
