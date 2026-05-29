@@ -13,13 +13,14 @@ const shipmentRoutes = require('./routes/shipments');
 const quoteRoutes = require('./routes/quotes');
 const adminRoutes = require('./routes/admin');
 const { setupLiveTracking } = require('./services/liveTracking');
+const { corsOrigin } = require('./utils/cors');
 
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: corsOrigin,
     methods: ['GET', 'POST'],
   },
 });
@@ -30,7 +31,7 @@ setupLiveTracking(io);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: corsOrigin,
     credentials: true,
   })
 );
