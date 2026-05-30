@@ -73,10 +73,10 @@ export default function LiveMapInner({
       }).addTo(map);
     }
 
-    const bounds: L.LatLngExpression[] = [];
+    const bounds: L.LatLngTuple[] = [];
     if (originCoords) bounds.push([originCoords.lat, originCoords.lng]);
     if (destinationCoords) bounds.push([destinationCoords.lat, destinationCoords.lng]);
-    if (bounds.length >= 2) map.fitBounds(bounds, { padding: [50, 50] });
+    if (bounds.length >= 2) map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
 
     return () => {
       map.remove();
