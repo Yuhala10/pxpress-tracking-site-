@@ -136,9 +136,6 @@ export default function HomePage() {
       <section className="py-12 bg-gray-50 dark:bg-navy-dark">
         <div className="max-w-3xl mx-auto px-4">
           <TrackingBar />
-          <p className="text-center text-sm text-gray-500 mt-3">
-            Try: PX992381CM · PX4839201CM · PXP992018US
-          </p>
         </div>
       </section>
 

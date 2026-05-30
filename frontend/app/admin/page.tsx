@@ -30,6 +30,9 @@ export default function AdminPage() {
   const [selected, setSelected] = useState('');
   const [analytics, setAnalytics] = useState<{ statuses: { _id: string; count: number }[]; last7: { _id: string; count: number }[] } | null>(null);
   const [newTn, setNewTn] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [adminMsg, setAdminMsg] = useState('');
+  const [adminError, setAdminError] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -55,31 +58,54 @@ export default function AdminPage() {
     if (s.shipments[0] && !selected) setSelected(s.shipments[0].trackingNumber);
   };
 
-  const generateTracking = async () => {
-    const r = await api<{ trackingNumber: string }>('/shipments/generate-tracking', { method: 'POST' });
-    setNewTn(r.trackingNumber);
+  const previewTracking = async () => {
+    setAdminError('');
+    setAdminMsg('');
+    try {
+      const r = await api<{ trackingNumber: string }>('/shipments/generate-tracking', { method: 'POST' });
+      setNewTn(r.trackingNumber);
+    } catch (err: unknown) {
+      setAdminError(err instanceof Error ? err.message : 'Could not generate tracking number');
+    }
   };
 
   const createShipment = async () => {
-    const tn = newTn || undefined;
-    await api('/shipments', {
-      method: 'POST',
-      body: JSON.stringify({
-        trackingNumber: tn,
-        sender: 'P XPRESS Hub',
-        receiver: 'Customer',
-        origin: 'Dubai, UAE',
-        destination: 'Yaoundé, Cameroon',
-        originCoords: { lat: 25.2048, lng: 55.2708 },
-        destinationCoords: { lat: 3.848, lng: 11.5021 },
-        currentLocation: 'Dubai, UAE',
-        status: 'in_transit',
-        statusLabel: 'In Transit',
-        speedKmh: 80,
-      }),
-    });
-    setNewTn('');
-    load();
+    setCreating(true);
+    setAdminError('');
+    setAdminMsg('');
+    try {
+      let tn = newTn.trim();
+      if (!tn) {
+        const r = await api<{ trackingNumber: string }>('/shipments/generate-tracking', { method: 'POST' });
+        tn = r.trackingNumber;
+      }
+      const res = await api<{ shipment: Shipment }>('/shipments', {
+        method: 'POST',
+        body: JSON.stringify({
+          trackingNumber: tn,
+          sender: 'P XPRESS Hub',
+          receiver: 'Customer',
+          origin: 'Dubai, UAE',
+          destination: 'Yaoundé, Cameroon',
+          originCoords: { lat: 25.2048, lng: 55.2708 },
+          destinationCoords: { lat: 3.848, lng: 11.5021 },
+          currentLocation: 'Dubai, UAE',
+          status: 'in_transit',
+          statusLabel: 'In Transit',
+          speedKmh: 80,
+        }),
+      });
+      const created = res.shipment.trackingNumber;
+      setNewTn(created);
+      setSelected(created);
+      setAdminMsg(`Shipment ${created} created. Share the tracking link on the right.`);
+      await load();
+      setSelected(created);
+    } catch (err: unknown) {
+      setAdminError(err instanceof Error ? err.message : 'Failed to create shipment');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const deleteShipment = async (id: string) => {
@@ -136,20 +162,35 @@ export default function AdminPage() {
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="glass rounded-2xl p-6">
-            <div className="flex flex-wrap gap-3 mb-4">
-              <button onClick={generateTracking} className="btn-primary text-sm py-2">
-                Generate Tracking #
-              </button>
+            <p className="text-sm text-gray-500 mb-3">
+              Generate a number, then create the shipment so customers can track it. Preview only does not save.
+            </p>
+            <div className="flex flex-wrap gap-3 mb-2">
               <input
                 value={newTn}
-                onChange={(e) => setNewTn(e.target.value)}
-                placeholder="PX829301US"
-                className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border dark:bg-navy-light"
+                onChange={(e) => setNewTn(e.target.value.toUpperCase())}
+                placeholder="Leave blank to auto-generate"
+                className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border dark:bg-navy-light font-mono"
               />
-              <button onClick={createShipment} className="btn-navy text-sm py-2 flex items-center gap-1">
-                <Plus size={16} /> Create Shipment
+              <button
+                type="button"
+                onClick={previewTracking}
+                disabled={creating}
+                className="btn-navy text-sm py-2"
+              >
+                Preview #
+              </button>
+              <button
+                type="button"
+                onClick={createShipment}
+                disabled={creating}
+                className="btn-primary text-sm py-2 flex items-center gap-1"
+              >
+                <Plus size={16} /> {creating ? 'Creating...' : 'Create Shipment'}
               </button>
             </div>
+            {adminMsg && <p className="text-sm text-green-600 mb-2">{adminMsg}</p>}
+            {adminError && <p className="text-sm text-red-500 mb-2">{adminError}</p>}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

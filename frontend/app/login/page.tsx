@@ -9,7 +9,7 @@ export default function LoginPage() {
   const { login } = useApp();
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState('pxpress@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,7 +66,6 @@ export default function LoginPage() {
             Forgot password?
           </Link>
         </p>
-        <p className="text-xs text-center mt-4 text-gray-400">Admin: pxpress@gmail.com / xpress12345</p>
       </div>
     </div>
   );

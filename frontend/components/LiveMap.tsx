@@ -14,7 +14,7 @@ export type ShipmentMapData = {
 };
 
 const MapInner = dynamic(() => import('./LiveMapInner'), { ssr: false, loading: () => (
-  <div className="h-[400px] md:h-[500px] bg-gray-100 dark:bg-navy-light rounded-2xl animate-pulse flex items-center justify-center text-gray-500">
+  <div className="map-shell map-canvas bg-gray-100 dark:bg-navy-light rounded-2xl animate-pulse flex items-center justify-center text-gray-500">
     Loading map...
   </div>
 )});

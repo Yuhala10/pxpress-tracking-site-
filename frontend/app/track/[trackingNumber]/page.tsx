@@ -42,9 +42,17 @@ export default function TrackingResultPage() {
   const [live, setLive] = useState<{ coords?: { lat: number; lng: number }; heading?: number; moving?: boolean; location?: string }>({});
 
   const load = useCallback(() => {
-    api<{ shipment: Shipment }>(`/shipments/track/${tn}`)
+    setError('');
+    api<{ shipment: Shipment }>(`/shipments/track/${encodeURIComponent(tn)}`)
       .then((r) => setShipment(r.shipment))
-      .catch(() => setError('Shipment not found'));
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network')) {
+          setError('Cannot reach tracking server. Check site configuration.');
+        } else {
+          setError(msg || 'Shipment not found');
+        }
+      });
   }, [tn]);
 
   useEffect(() => {

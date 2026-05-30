@@ -17,6 +17,13 @@ const truckIcon = (heading: number) =>
     iconAnchor: [18, 18],
   });
 
+function scheduleInvalidate(map: L.Map) {
+  const run = () => map.invalidateSize({ animate: false });
+  requestAnimationFrame(run);
+  setTimeout(run, 100);
+  setTimeout(run, 400);
+}
+
 export default function LiveMapInner({
   originCoords,
   destinationCoords,
@@ -27,19 +34,32 @@ export default function LiveMapInner({
 }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
-  const routeRef = useRef<L.Polyline | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const isTouch =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
     const center = currentCoords || originCoords || { lat: 20, lng: 0 };
-    const map = L.map(containerRef.current, { scrollWheelZoom: false }).setView([center.lat, center.lng], 4);
+    const map = L.map(containerRef.current, {
+      scrollWheelZoom: !isTouch,
+      touchZoom: true,
+      zoomControl: true,
+    }).setView([center.lat, center.lng], 4);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
+      maxZoom: 19,
     }).addTo(map);
-    map.on('click', () => map.scrollWheelZoom.enable());
-    map.on('mouseout', () => map.scrollWheelZoom.disable());
+
+    if (!isTouch) {
+      map.on('click', () => map.scrollWheelZoom.enable());
+      map.on('mouseout', () => map.scrollWheelZoom.disable());
+    }
+
     mapRef.current = map;
 
     if (originCoords) {
@@ -60,7 +80,7 @@ export default function LiveMapInner({
     }
 
     if (route && route.length > 1) {
-      routeRef.current = L.polyline(
+      L.polyline(
         route.map((p) => [p.lat, p.lng] as [number, number]),
         { color: '#FF7A00', weight: 4, opacity: 0.7, dashArray: '8 8' }
       ).addTo(map);
@@ -76,11 +96,30 @@ export default function LiveMapInner({
     const bounds: L.LatLngTuple[] = [];
     if (originCoords) bounds.push([originCoords.lat, originCoords.lng]);
     if (destinationCoords) bounds.push([destinationCoords.lat, destinationCoords.lng]);
-    if (bounds.length >= 2) map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
+    if (bounds.length >= 2) {
+      map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40] });
+    }
+
+    scheduleInvalidate(map);
+
+    const el = containerRef.current;
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => scheduleInvalidate(map))
+        : null;
+    ro?.observe(el);
+
+    const onResize = () => scheduleInvalidate(map);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
 
     return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       map.remove();
       mapRef.current = null;
+      markerRef.current = null;
     };
   }, []);
 
@@ -91,17 +130,18 @@ export default function LiveMapInner({
     if (isMoving) {
       mapRef.current.panTo([currentCoords.lat, currentCoords.lng], { animate: true, duration: 0.8 });
     }
+    scheduleInvalidate(mapRef.current);
   }, [currentCoords, heading, isMoving]);
 
   return (
-    <div className="relative rounded-2xl overflow-hidden shadow-premium border border-gray-100 dark:border-white/10">
+    <div className="map-shell relative rounded-2xl shadow-premium border border-gray-100 dark:border-white/10">
       {isMoving && (
-        <div className="absolute top-4 left-4 z-[1000] px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full flex items-center gap-2">
+        <div className="absolute top-4 left-4 z-[1000] px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full flex items-center gap-2 pointer-events-none">
           <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
           LIVE
         </div>
       )}
-      <div ref={containerRef} className="h-[400px] md:h-[500px] w-full" />
+      <div ref={containerRef} className="map-canvas" />
     </div>
   );
 }
